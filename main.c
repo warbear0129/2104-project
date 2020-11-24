@@ -10,6 +10,26 @@
 #include "ti/devices/msp432p4xx/inc/msp.h"
 #include <ti/devices/msp432p4xx/driverlib/driverlib.h>
 
+/*
+ * UART Configuration Parameter. These are the configuration parameters to
+ * make the eUSCI A UART module to operate with a 115200 baud rate. These
+ * values were calculated using the online calculator that TI provides
+ * at: http://software-dl.ti.com/msp430/msp430_public_sw/mcu/msp430/MSP430BaudRateConverter/index.html
+ */
+const eUSCI_UART_ConfigV1 uartConfig =
+{
+        EUSCI_A_UART_CLOCKSOURCE_SMCLK,
+        1,
+        10,
+        0,
+        EUSCI_A_UART_NO_PARITY,
+        EUSCI_A_UART_MSB_FIRST,
+        EUSCI_A_UART_ONE_STOP_BIT,
+        EUSCI_A_UART_MODE,
+        EUSCI_A_UART_OVERSAMPLING_BAUDRATE_GENERATION,
+        EUSCI_A_UART_8_BIT_LEN
+};
+
 char joystick_last_direction = 'n';
 int mode = 1;
 int choice = 0;
@@ -61,11 +81,30 @@ void main(void)
     MAP_ADC14_enableConversion();
     MAP_ADC14_toggleConversionTrigger();
 
+    /* Initialize UART */
+
+    /* Selecting P3.2 (receive) and P3.3 (transmit) in UART mode */
+    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P3, GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
+
+    /* Configuring UART Module */
+    MAP_UART_initModule(EUSCI_A2_BASE, &uartConfig);
+
+    /* Enable UART module */
+    MAP_UART_enableModule(EUSCI_A2_BASE);
+
+    /* Enabling SRAM Bank Retention */
+    MAP_SysCtl_enableSRAMBankRetention(SYSCTL_SRAM_BANK1);
+
+    /* Enabling interrupts */
+    MAP_UART_enableInterrupt(EUSCI_A2_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+
     /* Enable interrupts */
     MAP_Interrupt_enableInterrupt(INT_PORT1);
     MAP_Interrupt_enableInterrupt(INT_PORT3);
     MAP_Interrupt_enableInterrupt(INT_PORT5);
     MAP_Interrupt_enableInterrupt(INT_ADC14);
+    MAP_Interrupt_enableInterrupt(INT_EUSCIA2);
+    MAP_Interrupt_enableSleepOnIsrExit();
     MAP_Interrupt_enableMaster();
 
     while (1)
